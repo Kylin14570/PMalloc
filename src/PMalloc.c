@@ -35,8 +35,10 @@ offset_t PMalloc(int size)
     if (CacheEmpty(cache, SizeClassIndex))
     {   // Fill the cache from a SuperBlcok
         if (!CacheFillFromPartial(cache, SizeClassIndex))
-            if (!CacheFillFromNewSB(cache, SizeClassIndex))
+            if (!CacheFillFromNewSB(cache, SizeClassIndex)){
                 printf("Exhausted memory!\n");
+                return 0;
+            }
     }
 
     //CacheDisplay(cache);

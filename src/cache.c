@@ -6,11 +6,9 @@ extern int sizeclass[];
 
 extern void *offset2ptr(offset_t offset);
 extern offset_t ptr2offset(void *ptr);
-extern void SBfree(struct SuperBlockDescriptor *desc);
-extern void SBpartial(struct SuperBlockDescriptor *desc);
 extern struct SuperBlockDescriptor *GetANewSB();
 extern struct SuperBlockDescriptor *GetAPartialSB(int SCindex);
-extern struct SuperBlockDescriptor *GetSBdescriptor(offset_t offset);
+extern void blockFree(offset_t block);
 
 int CacheEmpty(struct ThreadCache *cache, int SCindex)
 {
@@ -86,16 +84,10 @@ void CacheFlush(struct ThreadCache *cache, int SCindex)
     for (int i = 0; i < cnt; i++)
     {
         offset_t block = CachePop(cache, SCindex);
-        struct SuperBlockDescriptor *desc = GetSBdescriptor(block);
-        *(offset_t *)offset2ptr(block) = desc->firstBlock;
-        desc->firstBlock = block;
-        desc->availableCount++;
-        if (desc->availableCount == desc->maxCount)
-            SBfree(desc);
-        else
-            SBpartial(desc);
+        blockFree(block);
     }
 }
+
 void CacheDisplay(struct ThreadCache *cache)
 {
     for(int i=0; i<SIZE_CLASS_NUMBER; i++){

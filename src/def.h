@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <libpmem.h>
-
+#include <pthread.h>
 
 /*
 ** Support 16 threads at most
@@ -61,7 +61,7 @@ struct SuperBlockDescriptor
 
 struct ThreadCache
 {
-    pid_t PID;                      // ID of the thread the Cache belongs to
+    pthread_t TID;                      // ID of the thread the Cache belongs to
     
     offset_t sc[SIZE_CLASS_NUMBER]; // Array of pointers to all size classes in the Cache
     // For example, sc[1] points to the first available block in the size of sizeclass[1] in the Cache.

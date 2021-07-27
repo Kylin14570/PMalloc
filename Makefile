@@ -12,11 +12,11 @@
 src = $(wildcard src/*.c)
 obj = $(patsubst src/%.c, obj/%.o, $(src))
 main: $(obj)
-	gcc $(obj) -o main -lpmem
+	gcc $(obj) -o main -lpmem -lpthread
 obj/%.o: src/%.c src/def.h
 	gcc -c $< -o $@
 clean:
-	rm -rf $(obj) main
+	rm -rf $(obj) main pool
 run:
 	make
-	./main
+	./main 2

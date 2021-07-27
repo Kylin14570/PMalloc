@@ -8,6 +8,8 @@ extern offset_t CachePop(struct ThreadCache *cache, int SCindex);
 extern void SBfree(struct SuperBlockDescriptor *desc);
 extern void SBpartial(struct SuperBlockDescriptor *desc);
 extern struct SuperBlockDescriptor *GetSBdescriptor(offset_t block);
+extern int CAS64();
+
 /*
 **  Get current thread's cache
 **  Return a pointer of the ThreadCache
@@ -15,11 +17,11 @@ extern struct SuperBlockDescriptor *GetSBdescriptor(offset_t block);
 struct ThreadCache *GetThreadCache()
 {
     int i;
-    pid_t pid = getpid();
+    pthread_t tid = pthread_self();
     struct ThreadCache *cache =
         (struct ThreadCache *)offset2ptr(GD->ThreadCacheOffset);
 
-    for (i = 0; i < MAX_THREAD_NUMBER && cache[i].PID != pid; i++)
+    for (i = 0; i < MAX_THREAD_NUMBER && cache[i].TID != tid; i++)
         ; // Find this thread's ThreadCache
     if (i == MAX_THREAD_NUMBER)
     { // Not Found
@@ -41,22 +43,23 @@ void ThreadInit()
 
     /* Get a ThreadCache */
     int i;
-    pid_t pid = getpid();
+    pthread_t tid = pthread_self();
     struct ThreadCache *cache =
         (struct ThreadCache *)offset2ptr(GD->ThreadCacheOffset);
-    for (i = 0; i < MAX_THREAD_NUMBER && cache[i].PID != 0; i++)
-        ; // Find a free ThreadCache.
-    if (i == MAX_THREAD_NUMBER)
-    {
-        printf("Unexpected error in ThreadInit() !\n");
-        exit(0);
-    }
-    cache[i].PID = pid; // Occupy the ThreadCache.
 
-    printf("Thread %d has been initialized\n\n",pid);
+    do{
+        for(i = 0; i < MAX_THREAD_NUMBER; i++)
+            if(cache[i].TID == 0) // Find a free ThreadCache.
+                break;
+        if (i == MAX_THREAD_NUMBER)
+        {
+            printf("Unexpected error in ThreadInit() !\n");
+            exit(0);
+        }
+    }while ( ! CAS64( &(cache[i].TID), 0, tid) ); // Occupy the ThreadCache.
 
-    // TODO
-    // Concurrency Control
+    printf("Thread %lu has been initialized\n\n",tid);
+
 }
 
 void ThreadDestroy()
@@ -81,11 +84,11 @@ void ThreadDestroy()
     }
 
     // 2. Initialize the ThreadCache.
-    pid_t pid = cache->PID;
-    cache->PID = 0;
+    pthread_t tid = cache->TID;
+    cache->TID = 0;
 
     ((struct GlobalDescriptor *)BaseAddress)->tag--;
     pmem_persist(&(((struct GlobalDescriptor *)BaseAddress)->tag), 4);
 
-    printf("Thread %d has been Destroyed\n\n",pid);
+    printf("Thread %lu has been Destroyed\n\n",tid);
 }

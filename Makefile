@@ -15,8 +15,43 @@ main: $(obj)
 	gcc $(obj) -o main -lpmem -lpthread
 obj/%.o: src/%.c src/def.h
 	gcc -c $< -o $@
+.PHONY:clean
 clean:
 	rm -rf $(obj) main
+.PHONY:run
 run:
 	make
 	./main 16 100 100
+.PHONY:check
+check:
+	make
+	rm pool
+	./main 16 1000 1000 > log.txt
+	check/check < log.txt
+	rm pool
+	./main 16 1000 1000 > log.txt
+	check/check < log.txt
+	rm pool
+	./main 16 1000 1000 > log.txt
+	check/check < log.txt
+	rm pool
+	./main 16 1000 1000 > log.txt
+	check/check < log.txt
+	rm pool
+	./main 16 1000 1000 > log.txt
+	check/check < log.txt
+	rm pool
+	./main 16 1000 1000 > log.txt
+	check/check < log.txt
+	rm pool
+	./main 16 1000 1000 > log.txt
+	check/check < log.txt
+	rm pool
+	./main 16 1000 1000 > log.txt
+	check/check < log.txt
+	rm pool
+	./main 16 1000 1000 > log.txt
+	check/check < log.txt
+	rm pool
+	./main 16 1000 1000 > log.txt
+	check/check < log.txt

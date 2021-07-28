@@ -1,6 +1,8 @@
 #include "def.h"
 #include <pthread.h>
 
+pthread_mutex_t mutex;
+
 int T = 1;
 int M = 1;
 int N = 1;
@@ -68,6 +70,8 @@ int main(int argc, char *argv[])
 
     srand(time(NULL));
 
+    pthread_mutex_init(&mutex, NULL);
+
     char *base = PMalloc_map_file(path, size);
     
     pthread_t tid[MAX_THREAD_NUMBER];
@@ -79,6 +83,8 @@ int main(int argc, char *argv[])
         pthread_join( tid[i], NULL);
 
     pmem_unmap(base, size);
+    
+    pthread_mutex_destroy(&mutex);
     
     printf("Finished successfully!\n\n");
 

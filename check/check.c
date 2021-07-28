@@ -26,7 +26,7 @@ int main()
         else if(strcmp(s,"Finished")==0)
             break;
         else{
-            printf("Syntax error in line %llu\n",lineNO);
+            printf("Syntax error in line %llu : %s\n\n",lineNO, s);
             return 0;
         }
 
@@ -51,7 +51,7 @@ int main()
             }
         }
         else{
-            printf("Syntax error in line %llu\n",lineNO);
+            printf("Syntax error in line %llu : %s\n\n",lineNO,s);
             return 0;
         }
     }
@@ -63,7 +63,10 @@ int main()
             flag = 1;
         }
     }
-    if(!flag)
-        printf("Check finished %llu lines, no bug found.\nCongratulations!\n",lineNO);
+    if(!flag){
+        printf("Check finished %llu lines, no bug found.\n ",lineNO);
+        printf("PASS!\n\n");
+    }
+        
     return 0;
 }

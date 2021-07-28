@@ -1,9 +1,3 @@
-/************************************
- * 
- *  Concurrency Control Needed !
- * 
- * **********************************/
-
 #include "def.h"
 
 extern char *BaseAddress;
@@ -13,6 +7,7 @@ extern offset_t ptr2offset(void *ptr);
 extern int CAS32();
 extern int CAS64();
 
+extern pthread_mutex_t mutex;
 
 struct SuperBlockDescriptor *GetSBdescriptor(offset_t offset)
 {
@@ -93,7 +88,7 @@ struct SuperBlockDescriptor *GetANewSB()
 */
 
 
-
+/*
     //-----------------------------------------------
     // Concurrency Control with CAS 
     //-----------------------------------------------
@@ -111,7 +106,25 @@ struct SuperBlockDescriptor *GetANewSB()
             Next = -1;
 
     } while ( ! CAS32( &(GD->firstFreeSB), First, Next) );
+*/
 
+    //-----------------------------------------------
+    // Concurrency Control with mutex 
+    //-----------------------------------------------
+    pthread_mutex_lock(&mutex);
+    
+    First = GD->firstFreeSB;
+    if (First == -1)
+        return NULL;
+    // Find next free SB 
+    for (Next = First + 1; Next < GD->SBnumber; Next++)
+        if (desc[Next].superBlcok == 0)
+            break;
+    if (Next == GD->SBnumber)
+        Next = -1;
+    GD->firstFreeSB = Next;
+    
+    pthread_mutex_unlock(&mutex);
 
     return &desc[First];
 }

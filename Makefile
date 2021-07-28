@@ -16,7 +16,7 @@ main: $(obj)
 obj/%.o: src/%.c src/def.h
 	gcc -c $< -o $@
 clean:
-	rm -rf $(obj) main pool
+	rm -rf $(obj) main
 run:
 	make
-	./main 2
+	./main 16 100 100

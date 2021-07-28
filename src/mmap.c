@@ -13,10 +13,6 @@ extern void *offset2ptr(offset_t offset);
 */
 void Initialize(char *baseAddress, int len)
 {
-#ifdef DEBUG
-    printf("Initialize the pool...\n");
-#endif
-
     unsigned long long GlobalDescriptorLength = 
                         sizeof(struct GlobalDescriptor);
     
@@ -66,6 +62,7 @@ void Initialize(char *baseAddress, int len)
     GD->magic = MAGIC;
     pmem_persist(baseAddress, 4);
 
+/*
     printf("The memory pool has been initialized!\n");
     printf("Base address -- %llx\n", (unsigned long long)BaseAddress);
     printf("Size         -- %llu\n", GD->MemorySize);
@@ -73,12 +70,13 @@ void Initialize(char *baseAddress, int len)
     printf("SBdescriptor -- %llx\n", GD->SuperBlockDescriptorOffset);
     printf("User Space   -- %llx\n", GD->UserSpaceOffset);
     printf("There are %llu SuperBlocks.\n\n", SBcount);
-
+*/
 }
 
 void Recovery(char *BaseAddress, int len)
 {
-    printf("recover\n\n");
+    printf("We need to recover...\n\n");
+    exit(0);
 
     // TODO
     // 1. Garbage collection via reachability from the ROOT
@@ -110,7 +108,7 @@ char *PMalloc_map_file(const char *filePath, int len)
         return NULL; // Something wrong
     }
 
-    printf("Mapped the file successfully!\n\n");
+    //printf("Mapped the file successfully!\n\n");
 
     GD = (struct GlobalDescriptor *)BaseAddress;
 

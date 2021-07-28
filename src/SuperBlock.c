@@ -75,8 +75,11 @@ struct SuperBlockDescriptor *GetANewSB()
     struct SuperBlockDescriptor *desc =
         (struct SuperBlockDescriptor *)offset2ptr(GD->SuperBlockDescriptorOffset);
 
+
 /*
-    // Don't consider concurrency control at present 
+    //-----------------------------------------------
+    // Don't consider concurrency control 
+    //-----------------------------------------------
     First = GD->firstFreeSB;
     if (First == -1)
         return NULL;
@@ -87,45 +90,50 @@ struct SuperBlockDescriptor *GetANewSB()
     if (Next == GD->SBnumber)
         Next = -1;
     GD->firstFreeSB = Next;
-
-    printf("Allocate a new SB %d\n\n",First);
-
-    return desc + First;
 */
 
 
+
+    //-----------------------------------------------
+    // Concurrency Control with CAS 
+    //-----------------------------------------------
     do
     {
+        // Get the first free SB
         First = GD->firstFreeSB;
         if (First == -1)
             return NULL;
         // Find next free SB
         for (Next = First + 1; Next < GD->SBnumber; Next++)
-            if (desc[Next].superBlcok == 0)
+            if (desc[Next].superBlcok == 0) // It's free
                 break;
-        if (Next == GD->SBnumber)
+        if (Next == GD->SBnumber) // There is no free SB anymore
             Next = -1;
-    } while ( ! CAS32(&(GD->firstFreeSB), First, Next) );
 
-    printf("Allocate a new SB %d\n\n",First);
-    
-    return desc + First;
+    } while ( ! CAS32( &(GD->firstFreeSB), First, Next) );
+
+
+    return &desc[First];
 }
 
 void SBfree(struct SuperBlockDescriptor *desc)
 {
-    int i = (ptr2offset((void *)desc) - GD->SuperBlockDescriptorOffset) / sizeof(struct SuperBlockDescriptor);
-
-    printf("SB %d is freed\n\n",i);
+    int old, new;
+    int i = (ptr2offset((void *)desc) - GD->SuperBlockDescriptorOffset) // index of the SB
+            / sizeof(struct SuperBlockDescriptor);
 
     pmem_memset_persist(desc, 0, sizeof(struct SuperBlockDescriptor));
-
-    int old, new;
+    
     do{
         new = old = GD->firstFreeSB;
         if( i < new )
             new = i;
+        else
+            break ;
     }while ( ! CAS32( &(GD->firstFreeSB), old, new) );
+
+    printf("Thread %lu freed SB %d\n",pthread_self(), i);
+    
 }
 
 void SBpartial(struct SuperBlockDescriptor *desc)
@@ -137,6 +145,8 @@ void SBpartial(struct SuperBlockDescriptor *desc)
         new = old = GD->firstPartialSB[desc->SizeClassIndex];
         if( i < new )
             new = i;
+        else    
+            break;
     }while ( ! CAS32( &(GD->firstPartialSB[desc->SizeClassIndex]), old, new) );
 }
 

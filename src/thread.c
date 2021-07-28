@@ -7,6 +7,7 @@ extern void *offset2ptr(offset_t offset);
 extern offset_t CachePop(struct ThreadCache *cache, int SCindex);
 extern void SBfree(struct SuperBlockDescriptor *desc);
 extern void SBpartial(struct SuperBlockDescriptor *desc);
+extern void blockFree(offset_t block);
 extern struct SuperBlockDescriptor *GetSBdescriptor(offset_t block);
 extern int CAS64();
 
@@ -25,7 +26,7 @@ struct ThreadCache *GetThreadCache()
         ; // Find this thread's ThreadCache
     if (i == MAX_THREAD_NUMBER)
     { // Not Found
-        printf("Unexpected error in GetThreadCache() !\n");
+        printf("ERROR  Thread %lu panic in GetThreadCache() !\n", pthread_self());
         exit(0);
     }
     return &(cache[i]);
@@ -37,13 +38,16 @@ struct ThreadCache *GetThreadCache()
 */
 void ThreadInit()
 {
+    pthread_t tid = pthread_self();
+    
+    //printf("Thread %lu is initialzing...\n",tid);
+
     /* Increase the tag in global descriptor */
     ((struct GlobalDescriptor *)BaseAddress)->tag++;
     pmem_persist(&(((struct GlobalDescriptor *)BaseAddress)->tag), 4);
 
     /* Get a ThreadCache */
     int i;
-    pthread_t tid = pthread_self();
     struct ThreadCache *cache =
         (struct ThreadCache *)offset2ptr(GD->ThreadCacheOffset);
 
@@ -58,28 +62,24 @@ void ThreadInit()
         }
     }while ( ! CAS64( &(cache[i].TID), 0, tid) ); // Occupy the ThreadCache.
 
-    printf("Thread %lu has been initialized\n\n",tid);
+    //printf("Thread %lu has initialized\n\n",tid);
 
 }
 
 void ThreadDestroy()
 {
+    //printf("Thread %lu is destroying...\n",pthread_self());
+
     struct ThreadCache *cache = GetThreadCache();
 
     // 1. Reclaim unused blocks in the cache
     for (int i = 0; i < SIZE_CLASS_NUMBER; i++)
     {
+        //printf("blockCount[%d] = %d\n",i, cache->blockCount[i]);
         while (cache->blockCount[i])
         {
             offset_t block = CachePop(cache, i);
-            struct SuperBlockDescriptor *desc = GetSBdescriptor(block);
-            *(offset_t *)offset2ptr(block) = desc->firstBlock;
-            desc->firstBlock = block;
-            (desc->availableCount)++;
-            if (desc->availableCount == desc->maxCount)
-                SBfree(desc);
-            else
-                SBpartial(desc);
+            blockFree(block);
         }
     }
 
@@ -90,5 +90,5 @@ void ThreadDestroy()
     ((struct GlobalDescriptor *)BaseAddress)->tag--;
     pmem_persist(&(((struct GlobalDescriptor *)BaseAddress)->tag), 4);
 
-    printf("Thread %lu has been Destroyed\n\n",tid);
+    //printf("Thread %lu has been Destroyed\n\n",tid);
 }

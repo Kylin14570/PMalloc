@@ -46,10 +46,12 @@ offset_t PMalloc(int size)
     // pop the first block from the cache
     offset_t firstBlock = CachePop(cache, SizeClassIndex);
 
+/*
     // add a root item to record this object
     struct ROOT *root = allocROOT();
     *(offset_t *)offset2ptr(firstBlock) = ptr2offset((void *)root);
     root->objectAddress = firstBlock;
+*/
 
     return firstBlock + 8;
 }
@@ -57,17 +59,22 @@ offset_t PMalloc(int size)
 int PMfree(offset_t offset)
 {
     if(offset - 8 < GD->UserSpaceOffset
-    || offset >= GD->MemorySize)
-        return -1;  // Illegal address
+    || offset >= GD->MemorySize){ // Illegal address
+        printf("ERROR : Thread %lu free %llx out of space!\n\n",pthread_self(),offset);
+        exit(0);
+    }
     
     offset -= 8;    // 8 more bytes for ROOT item address.
 
+/*
     struct ROOT *root = (struct ROOT *)offset2ptr(*(offset_t *)offset2ptr(offset));
-    if(root->objectAddress != offset)
-        return -1;
+    if(root->objectAddress != offset){
+        printf("ERROR : Thread %lu free %llx no ROOT found!\n\n", pthread_self(), offset);
+        exit(0);
+    }
     
     freeROOT(root);
-
+*/
     struct ThreadCache *cache = GetThreadCache();
     struct SuperBlockDescriptor *SB = GetSBdescriptor(offset);
     if( CacheFull(cache, SB->SizeClassIndex) )

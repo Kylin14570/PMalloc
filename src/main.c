@@ -12,12 +12,17 @@ extern void ThreadInit();
 extern void ThreadDestroy();
 extern offset_t PMalloc(int size);
 extern void PMfree(offset_t offset);
+extern struct SuperBlockDescriptor *GetANewSB();
+extern void SBfree(struct SuperBlockDescriptor *desc);
+
 
 const char path[] = "./pool";
 const int size = 1024*1024*1024;
 
 void *test(void *arg)
 {
+    //printf("Thread %lu get into test()\n",pthread_self());
+
     offset_t p[N];
 
     ThreadInit();
@@ -25,18 +30,16 @@ void *test(void *arg)
     for(int j=0; j<M; j++)
     {
         for(int i=0; i<N; i++){
-            int size = rand()%1000 + 1;
-            p[i] = PMalloc(size);
+            int s = (rand()%1000) + 1;
+            p[i] = PMalloc(s);
             if(!p[i]){
-                printf("ERROR : Thread %lu failed to allocate %d bytes !\n\n",pthread_self(), size);
+                printf("Allocation failed !\n");
                 exit(0);
             }
         }
     
-        for(int i=0; i<N; i++){
-            if(p[i])
-                PMfree(p[i]);
-        }
+        for(int i=0; i<N; i++)
+            PMfree(p[i]);
     }  
 
     ThreadDestroy();

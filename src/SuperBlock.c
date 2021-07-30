@@ -47,7 +47,7 @@ struct SuperBlockDescriptor *GetAPartialSB(int SCindex)
 */
 
 
-
+/*
     do
     {
         First = GD->firstPartialSB[SCindex];
@@ -62,9 +62,33 @@ struct SuperBlockDescriptor *GetAPartialSB(int SCindex)
     } while ( ! CAS32( &(GD->firstPartialSB[SCindex]), First, Next) );
 
     return desc + First;
+*/
+    //printf("Thread %lu get into GetAPartialSB()\n",pthread_self());
+    
+    pthread_mutex_lock(&mutex);
+    
+    First = GD->firstPartialSB[SCindex];
+    if (First == -1){
+        pthread_mutex_unlock(&mutex);
+       return NULL;
+    }
+
+    // Find next partial SB
+    for (Next = First + 1; Next < GD->SBnumber; Next++){
+        if (desc[Next].SizeClassIndex == SCindex && desc[Next].superBlcok && desc[Next].availableCount < desc[Next].maxCount)
+            break;
+    }
+    if (Next == GD->SBnumber)
+        Next = -1;
+    
+    GD->firstPartialSB[SCindex] = Next;
+    
+    pthread_mutex_unlock(&mutex);
+    
+    return &desc[First];
 }
 
-struct SuperBlockDescriptor *GetANewSB()
+struct SuperBlockDescriptor *GetANewSB(int SCindex)
 {
     int First, Next;
     struct SuperBlockDescriptor *desc =
@@ -75,9 +99,6 @@ struct SuperBlockDescriptor *GetANewSB()
     //-----------------------------------------------
     // Don't consider concurrency control 
     //-----------------------------------------------
-    First = GD->firstFreeSB;
-    if (First == -1)
-        return NULL;
     // Find next free SB 
     for (Next = First + 1; Next < GD->SBnumber; Next++)
         if (desc[Next].superBlcok == 0)
@@ -115,22 +136,29 @@ struct SuperBlockDescriptor *GetANewSB()
     //-----------------------------------------------
     pthread_mutex_lock(&mutex);
     
-    First = GD->firstFreeSB;
-    if (First == -1)
+    First = GD->firstFreeSB;  // Get first free SB
+    if (First == -1)  // There is no free SB
+    {
+        pthread_mutex_unlock(&mutex);
         return NULL;
+    }
+    desc[First].superBlcok = GD->UserSpaceOffset + First * SUPER_BLOCK_SIZE;
+
     // Find next free SB 
     for (Next = First + 1; Next < GD->SBnumber; Next++)
-        if (desc[Next].superBlcok == 0)
+        if (desc[Next].superBlcok == 0) // Find a free SB
             break;
-    if (Next == GD->SBnumber)
+    if (Next == GD->SBnumber)  // There is no free SB
         Next = -1;
-    GD->firstFreeSB = Next;
-    
-    pthread_mutex_unlock(&mutex);
+
+    GD->firstFreeSB = Next;  // Update the first free SB to Next
 
     printf("Thread %lu occupied SB %d\n",pthread_self(),First);
     
+    pthread_mutex_unlock(&mutex);
+
     return &desc[First];
+
 }
 
 void SBfree(struct SuperBlockDescriptor *desc)
@@ -139,6 +167,9 @@ void SBfree(struct SuperBlockDescriptor *desc)
     int i = (ptr2offset((void *)desc) - GD->SuperBlockDescriptorOffset) // index of the SB
             / sizeof(struct SuperBlockDescriptor);
 
+    int SCindex = desc->SizeClassIndex;
+
+/*
     pmem_memset_persist(desc, 0, sizeof(struct SuperBlockDescriptor));
     
     do{
@@ -150,13 +181,36 @@ void SBfree(struct SuperBlockDescriptor *desc)
     }while ( ! CAS32( &(GD->firstFreeSB), old, new) );
 
     printf("Thread %lu freed SB %d\n",pthread_self(), i);
+*/
+
+    pthread_mutex_lock(&mutex);
+
+    desc->superBlcok = 0;
     
+    if(i < GD->firstFreeSB || GD->firstFreeSB == -1)
+        GD->firstFreeSB = i;
+    
+    if(GD->firstPartialSB[SCindex] == i){
+        int j;
+        struct SuperBlockDescriptor *d = (struct SuperBlockDescriptor *)offset2ptr(GD->SuperBlockDescriptorOffset);
+        for(j = i+1 ; j<GD->SBnumber; j++)
+            if(d[j].SizeClassIndex == SCindex && d[j].superBlcok && d[j].availableCount < d[j].maxCount)
+                break;
+        if(j == GD->SBnumber)
+            j = -1;
+        GD->firstPartialSB[SCindex] = j;
+    }
+
+    printf("Thread %lu freed SB %d\n",pthread_self(), i);
+    
+    pthread_mutex_unlock(&mutex);
+
 }
 
 void SBpartial(struct SuperBlockDescriptor *desc)
 {
     int i = (ptr2offset((void *)desc) - GD->SuperBlockDescriptorOffset) / sizeof(struct SuperBlockDescriptor);
-    
+/*
     int old, new;
     do{
         new = old = GD->firstPartialSB[desc->SizeClassIndex];
@@ -165,6 +219,11 @@ void SBpartial(struct SuperBlockDescriptor *desc)
         else    
             break;
     }while ( ! CAS32( &(GD->firstPartialSB[desc->SizeClassIndex]), old, new) );
+*/
+    pthread_mutex_lock(&mutex);
+    if(i < GD->firstPartialSB[desc->SizeClassIndex] || GD->firstPartialSB[desc->SizeClassIndex] == -1)
+        GD->firstPartialSB[desc->SizeClassIndex] = i;
+    pthread_mutex_unlock(&mutex);
 }
 
 

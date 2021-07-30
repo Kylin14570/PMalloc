@@ -42,6 +42,7 @@ struct ThreadCache *GetThreadCache()
 *********************************************************************************/
 void ThreadInit()
 {
+    //printf("Thread %lu get into ThreadInit()\n",pthread_self());
 
     /* Increase the tag in global descriptor */
     ((struct GlobalDescriptor *)BaseAddress)->tag++;
@@ -64,10 +65,14 @@ void ThreadInit()
         }
     }while ( ! CAS64( &(cache[i].TID), 0, tid) ); // Occupy the ThreadCache.
 
+    for(int j=0; j<SIZE_CLASS_NUMBER; j++)
+        cache[i].sc[j] = cache[i].blockCount[j] = 0;
+    pmem_persist(&(cache[i]),sizeof(struct ThreadCache));
 }
 
 void ThreadDestroy()
 {
+    //printf("Thread %lu get into ThreadDestroy()\n",pthread_self());
    
     struct ThreadCache *cache = GetThreadCache();
 

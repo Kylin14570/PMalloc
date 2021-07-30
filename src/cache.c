@@ -6,7 +6,7 @@ extern int sizeclass[];
 
 extern void *offset2ptr(offset_t offset);
 extern offset_t ptr2offset(void *ptr);
-extern struct SuperBlockDescriptor *GetANewSB();
+extern struct SuperBlockDescriptor *GetANewSB(int SCindex);
 extern struct SuperBlockDescriptor *GetAPartialSB(int SCindex);
 extern void blockFree(offset_t block);
 
@@ -25,28 +25,39 @@ int CacheFull(struct ThreadCache *cache, int SCindex)
 
 void CachePush(struct ThreadCache *cache, int SCindex, offset_t block)
 {
-    if(block == 0){
-        printf("ERROR : In CachePush, block == 0!\n");
-        exit(0);
-    }
+    //printf("In push, block = %llx, original top = %llx  ",block, cache->sc[SCindex]);
     *(offset_t *)offset2ptr(block) = cache->sc[SCindex];
+    //printf("Now *(offset_t *)offset2ptr(block) = %llx\n",*(offset_t *)offset2ptr(block));
     cache->sc[SCindex] = block;
     cache->blockCount[SCindex]++;
+    //printf("Thread %lu push %llx to SC %d, now blockCount[%d] = %d, sc[%d] = %llx\n\n",
+    //    cache->TID, block, SCindex, SCindex, cache->blockCount[SCindex], SCindex, cache->sc[SCindex]);
+    
 }
 
 
 offset_t CachePop(struct ThreadCache *cache, int SCindex)
 {
     if (cache->blockCount[SCindex] == 0)
-        return 0;
-    if(cache->sc[SCindex]==0){
+        return 0;  // Cache is empty
+
+    offset_t firstBlock = cache->sc[SCindex];
+    offset_t nextBlock = *(offset_t *)offset2ptr(firstBlock);
+    //printf("In pop : first = %llx, next = %llx\n",firstBlock, nextBlock);
+
+    cache->sc[SCindex] = nextBlock;
+
+    cache->blockCount[SCindex]--;
+
+    //printf("Thread %lu pop %llx from SC %d, now blockCount[%d] = %d, sc[%d] = %llx\n\n",
+    //    cache->TID, firstBlock, SCindex, SCindex, cache->blockCount[SCindex], SCindex, cache->sc[SCindex]);
+
+    if(cache->sc[SCindex]==0 && cache->blockCount[SCindex]){
         printf("ERROR : Thread %lu CachePop() : blockCount[%d]=%d but sc[%d]=0\n",
             pthread_self(), SCindex, cache->blockCount[SCindex], SCindex);
         exit(0);
     }
-    offset_t firstBlock = cache->sc[SCindex];
-    cache->sc[SCindex] = *(offset_t *)offset2ptr(firstBlock);
-    cache->blockCount[SCindex]--;
+    
     return firstBlock;
 }
 
@@ -71,19 +82,22 @@ int CacheFillFromPartial(struct ThreadCache *cache, int SCindex)
 
 int CacheFillFromNewSB(struct ThreadCache *cache, int SCindex)
 {
-    struct SuperBlockDescriptor *desc = GetANewSB();
+    struct SuperBlockDescriptor *desc = GetANewSB(SCindex);
     if (!desc)
         return 0;
 
     int i = (ptr2offset((void *)desc) - GD->SuperBlockDescriptorOffset) 
             / sizeof(struct SuperBlockDescriptor);
-    desc->superBlcok =  GD->UserSpaceOffset + i * SUPER_BLOCK_SIZE;
+    
     desc->blockSize = sizeclass[SCindex];
     desc->maxCount = SUPER_BLOCK_SIZE / sizeclass[SCindex];
     desc->SizeClassIndex = SCindex;
     desc->firstBlock = 0;
     desc->availableCount = 0;
     
+
+    pmem_memset_persist(offset2ptr(desc->superBlcok), 0, SUPER_BLOCK_SIZE);
+
     for (int i = desc->maxCount - 1; i >= 0; i--){
         offset_t blk = desc->superBlcok + i * desc->blockSize;
         CachePush(cache, SCindex, blk);

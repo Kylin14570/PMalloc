@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <string.h>
-#define N 10000
+#define N 1000000
 
 unsigned long SB[N];
 

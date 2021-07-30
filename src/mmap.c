@@ -71,6 +71,7 @@ void Initialize(char *baseAddress, int len)
     printf("User Space   -- %llx\n", GD->UserSpaceOffset);
     printf("There are %llu SuperBlocks.\n\n", SBcount);
 */
+
 }
 
 void Recovery(char *BaseAddress, int len)

@@ -29,6 +29,8 @@ extern struct SuperBlockDescriptor *GetSBdescriptor(offset_t offset);
  * ***********************************/
 offset_t PMalloc(int size)
 {
+    //printf("Thread %lu get into PMalloc()\n",pthread_self());
+
     if (size <= 0) // Stupid calling.
         return 0;
     if (size > LIMIT_SIZE) // Large size directly allocated from the memory space.
@@ -42,7 +44,7 @@ offset_t PMalloc(int size)
 
     if (CacheEmpty(cache, SizeClassIndex))
     {   // Fill the cache from a SuperBlcok
-        if (!CacheFillFromPartial(cache, SizeClassIndex))
+        //if (!CacheFillFromPartial(cache, SizeClassIndex))
             if (!CacheFillFromNewSB(cache, SizeClassIndex)){
                 printf("Exhausted memory!\n");
                 return 0;
@@ -72,6 +74,8 @@ offset_t PMalloc(int size)
  * ***********************************/
 void PMfree(offset_t offset)
 {
+    //printf("Thread %lu get into PMfree()\n",pthread_self());
+
     if(offset - 8 < GD->UserSpaceOffset
     || offset >= GD->MemorySize){ // Illegal address
         printf("ERROR : Thread %lu tryed to free %llx out of space!\n\n",pthread_self(),offset);

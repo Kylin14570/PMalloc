@@ -11,10 +11,12 @@ extern void blockFree(offset_t block);
 extern struct SuperBlockDescriptor *GetSBdescriptor(offset_t block);
 extern int CAS64();
 
-/*
+/***************************************
+** 
 **  Get current thread's cache
 **  Return a pointer of the ThreadCache
-*/
+**
+***************************************/
 struct ThreadCache *GetThreadCache()
 {
     int i;
@@ -26,50 +28,47 @@ struct ThreadCache *GetThreadCache()
         ; // Find this thread's ThreadCache
     if (i == MAX_THREAD_NUMBER)
     { // Not Found
-        printf("ERROR  Thread %lu panic in GetThreadCache() !\n", pthread_self());
+        printf("ERROR : Thread %lu failed in GetThreadCache() !\n", pthread_self());
         exit(0);
     }
     return &(cache[i]);
 }
 
-/*
+/*********************************************************************************
+** 
 ** Initialize a thread after its born
 ** User applications should call this function immediately after creating a thread.
-*/
+**
+*********************************************************************************/
 void ThreadInit()
 {
-    pthread_t tid = pthread_self();
-    
-    //printf("Thread %lu is initialzing...\n",tid);
 
     /* Increase the tag in global descriptor */
     ((struct GlobalDescriptor *)BaseAddress)->tag++;
     pmem_persist(&(((struct GlobalDescriptor *)BaseAddress)->tag), 4);
-
-    /* Get a ThreadCache */
+    
     int i;
+    pthread_t tid = pthread_self();
     struct ThreadCache *cache =
         (struct ThreadCache *)offset2ptr(GD->ThreadCacheOffset);
 
+    /* Get a ThreadCache */
     do{
         for(i = 0; i < MAX_THREAD_NUMBER; i++)
             if(cache[i].TID == 0) // Find a free ThreadCache.
                 break;
         if (i == MAX_THREAD_NUMBER)
         {
-            printf("Unexpected error in ThreadInit() !\n");
+            printf("ERROR : Thread %lu failed in ThreadInit() !\n", pthread_self());
             exit(0);
         }
     }while ( ! CAS64( &(cache[i].TID), 0, tid) ); // Occupy the ThreadCache.
-
-    //printf("Thread %lu has initialized\n\n",tid);
 
 }
 
 void ThreadDestroy()
 {
-    //printf("Thread %lu is destroying...\n",pthread_self());
-
+   
     struct ThreadCache *cache = GetThreadCache();
 
     // 1. Reclaim unused blocks in the cache
@@ -84,11 +83,10 @@ void ThreadDestroy()
     }
 
     // 2. Initialize the ThreadCache.
-    pthread_t tid = cache->TID;
     cache->TID = 0;
 
+    // 3. Decrease the tag
     ((struct GlobalDescriptor *)BaseAddress)->tag--;
     pmem_persist(&(((struct GlobalDescriptor *)BaseAddress)->tag), 4);
-
-    //printf("Thread %lu has been Destroyed\n\n",tid);
+   
 }

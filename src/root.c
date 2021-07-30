@@ -7,7 +7,9 @@ extern offset_t ptr2offset(void *ptr);
 
 struct ROOT * allocROOT(void)
 {
+    /****************************/
     /* Need concurrency control */
+    /****************************/
     if(GD->FreeRoot == 0){
         struct SuperBlockDescriptor *SB = GetANewSB();
         int i = (ptr2offset((void *)SB) - GD->SuperBlockDescriptorOffset) / sizeof(struct SuperBlockDescriptor);
@@ -29,7 +31,9 @@ struct ROOT * allocROOT(void)
 
 void freeROOT(struct ROOT * root)
 {
+    /****************************/
     /* Need concurrency control */
+    /****************************/
     root->objectAddress = 0;
     if(ptr2offset((void *)root) == GD->Root){
         GD->Root = root->nextRoot;

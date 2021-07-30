@@ -108,6 +108,8 @@ struct SuperBlockDescriptor *GetANewSB()
     } while ( ! CAS32( &(GD->firstFreeSB), First, Next) );
 */
 
+
+
     //-----------------------------------------------
     // Concurrency Control with mutex 
     //-----------------------------------------------
@@ -126,6 +128,8 @@ struct SuperBlockDescriptor *GetANewSB()
     
     pthread_mutex_unlock(&mutex);
 
+    printf("Thread %lu occupied SB %d\n",pthread_self(),First);
+    
     return &desc[First];
 }
 

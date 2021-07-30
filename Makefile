@@ -21,7 +21,7 @@ clean:
 .PHONY:run
 run:
 	make
-	./main 16 100 100
+	./main 16 1000 1000
 .PHONY:check
 check:
 	make

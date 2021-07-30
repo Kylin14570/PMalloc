@@ -10,20 +10,23 @@ extern struct SuperBlockDescriptor *GetANewSB();
 extern struct SuperBlockDescriptor *GetAPartialSB(int SCindex);
 extern void blockFree(offset_t block);
 
+
 int CacheEmpty(struct ThreadCache *cache, int SCindex)
 {
     return cache->blockCount[SCindex] == 0;
 }
+
 
 int CacheFull(struct ThreadCache *cache, int SCindex)
 {
     return cache->blockCount[SCindex] * sizeclass[SCindex] >= CACHE_LIMIT;
 }
 
+
 void CachePush(struct ThreadCache *cache, int SCindex, offset_t block)
 {
     if(block == 0){
-        printf("In CachePush, block == 0!\n");
+        printf("ERROR : In CachePush, block == 0!\n");
         exit(0);
     }
     *(offset_t *)offset2ptr(block) = cache->sc[SCindex];
@@ -31,12 +34,13 @@ void CachePush(struct ThreadCache *cache, int SCindex, offset_t block)
     cache->blockCount[SCindex]++;
 }
 
+
 offset_t CachePop(struct ThreadCache *cache, int SCindex)
 {
     if (cache->blockCount[SCindex] == 0)
         return 0;
     if(cache->sc[SCindex]==0){
-        printf("Thread %lu blockCount[%d]=%d but sc[%d]=0\n",
+        printf("ERROR : Thread %lu CachePop() : blockCount[%d]=%d but sc[%d]=0\n",
             pthread_self(), SCindex, cache->blockCount[SCindex], SCindex);
         exit(0);
     }
@@ -79,7 +83,7 @@ int CacheFillFromNewSB(struct ThreadCache *cache, int SCindex)
     desc->SizeClassIndex = SCindex;
     desc->firstBlock = 0;
     desc->availableCount = 0;
-    printf("Thread %lu occupied SB %d\n",pthread_self(),i);
+    
     for (int i = desc->maxCount - 1; i >= 0; i--){
         offset_t blk = desc->superBlcok + i * desc->blockSize;
         CachePush(cache, SCindex, blk);

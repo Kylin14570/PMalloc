@@ -1,7 +1,6 @@
 #include "def.h"
 
 extern char *BaseAddress;
-extern struct GlobalDescriptor *GD;
 
 void *offset2ptr(offset_t offset)
 {

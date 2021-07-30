@@ -11,10 +11,10 @@ extern char *PMalloc_map_file(const char *filePath, int len);
 extern void ThreadInit();
 extern void ThreadDestroy();
 extern offset_t PMalloc(int size);
-extern int PMfree(offset_t offset);
+extern void PMfree(offset_t offset);
 
 const char path[] = "./pool";
-const int size = 100*1024*1024;
+const int size = 1024*1024*1024;
 
 void *test(void *arg)
 {
@@ -27,23 +27,16 @@ void *test(void *arg)
         for(int i=0; i<N; i++){
             int size = rand()%1000 + 1;
             p[i] = PMalloc(size);
-            if(p[i])
-                ;//printf("Thread %lu allocated %d bytes at %llx\n",pthread_self(), size, p[i]);
-            else{
-                printf("Thread %lu failed to allocate %d bytes !\n\n",pthread_self(), size);
+            if(!p[i]){
+                printf("ERROR : Thread %lu failed to allocate %d bytes !\n\n",pthread_self(), size);
                 exit(0);
             }
         }
     
-        for(int i=0; i<N; i++)
-            if(p[i]){
-                if(PMfree(p[i])==0)
-                    ;//printf("Thread %lu freed %llx\n",pthread_self(),p[i]);
-                else{
-                    printf("Thread %lu failed to free %llx\n\n",pthread_self(),p[i]);
-                    exit(0);
-                }
-            }
+        for(int i=0; i<N; i++){
+            if(p[i])
+                PMfree(p[i]);
+        }
     }  
 
     ThreadDestroy();
@@ -58,6 +51,8 @@ int main(int argc, char *argv[])
         printf("N -- number of PMalloc operations\n");
         return 0;
     }
+
+    time_t begin = clock();
 
     T = atoi(argv[1]);
     M = atoi(argv[2]);
@@ -86,7 +81,9 @@ int main(int argc, char *argv[])
     
     pthread_mutex_destroy(&mutex);
     
-    printf("Finished successfully!\n\n");
+    printf("\e[1;32m""\nFinished successfully!\n");
+    printf("time = %ldms\n\n",(clock()-begin)*1000/CLOCKS_PER_SEC);
+    printf("\e[0m");
 
     return 0;
 }

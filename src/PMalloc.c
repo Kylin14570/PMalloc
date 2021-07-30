@@ -19,6 +19,14 @@ extern void *offset2ptr(offset_t offset);
 extern offset_t ptr2offset(void *ptr);
 extern struct SuperBlockDescriptor *GetSBdescriptor(offset_t offset);
 
+
+/*************************************
+ * 
+ * Function : allocate size bytes and return the offset
+ * 
+ * If the allocation failed, it will return 0
+ * 
+ * ***********************************/
 offset_t PMalloc(int size)
 {
     if (size <= 0) // Stupid calling.
@@ -41,8 +49,6 @@ offset_t PMalloc(int size)
             }
     }
 
-    //CacheDisplay(cache);
-
     // pop the first block from the cache
     offset_t firstBlock = CachePop(cache, SizeClassIndex);
 
@@ -56,11 +62,19 @@ offset_t PMalloc(int size)
     return firstBlock + 8;
 }
 
-int PMfree(offset_t offset)
+
+/*************************************
+ * 
+ * Function : free a block at offset
+ * 
+ * Requirement : the block has been allocated before
+ * 
+ * ***********************************/
+void PMfree(offset_t offset)
 {
     if(offset - 8 < GD->UserSpaceOffset
     || offset >= GD->MemorySize){ // Illegal address
-        printf("ERROR : Thread %lu free %llx out of space!\n\n",pthread_self(),offset);
+        printf("ERROR : Thread %lu tryed to free %llx out of space!\n\n",pthread_self(),offset);
         exit(0);
     }
     
@@ -69,10 +83,9 @@ int PMfree(offset_t offset)
 /*
     struct ROOT *root = (struct ROOT *)offset2ptr(*(offset_t *)offset2ptr(offset));
     if(root->objectAddress != offset){
-        printf("ERROR : Thread %lu free %llx no ROOT found!\n\n", pthread_self(), offset);
+        printf("ERROR : Thread %lu tryed to free %llx, but no ROOT found!\n\n", pthread_self(), offset);
         exit(0);
     }
-    
     freeROOT(root);
 */
     struct ThreadCache *cache = GetThreadCache();
@@ -80,9 +93,16 @@ int PMfree(offset_t offset)
     if( CacheFull(cache, SB->SizeClassIndex) )
         CacheFlush(cache, SB->SizeClassIndex);
     CachePush(cache, SB->SizeClassIndex, offset);
-    return 0;
+  
 }
 
+
+
+/**************************************
+ * 
+ * Function : Allocate a large size of block
+ * 
+ * ***********************************/
 offset_t allocLargeSize(int size)
 {
     return 0;

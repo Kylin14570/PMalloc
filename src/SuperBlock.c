@@ -142,7 +142,6 @@ struct SuperBlockDescriptor *GetANewSB(int SCindex)
         pthread_mutex_unlock(&mutex);
         return NULL;
     }
-    desc[First].superBlcok = GD->UserSpaceOffset + First * SUPER_BLOCK_SIZE;
 
     // Find next free SB 
     for (Next = First + 1; Next < GD->SBnumber; Next++)
@@ -153,6 +152,7 @@ struct SuperBlockDescriptor *GetANewSB(int SCindex)
 
     GD->firstFreeSB = Next;  // Update the first free SB to Next
 
+    desc[First].superBlcok = GD->UserSpaceOffset + First * SUPER_BLOCK_SIZE;
     printf("Thread %lu occupied SB %d\n",pthread_self(),First);
     
     pthread_mutex_unlock(&mutex);
